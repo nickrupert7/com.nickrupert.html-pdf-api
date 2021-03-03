@@ -317,8 +317,6 @@ class HtmlToPdf
             static::cleanup();
         }
 
-        file_put_contents('/Users/nick/Downloads/test.pdf', $blob);
-
         return $blob;
     }
     //endregion
