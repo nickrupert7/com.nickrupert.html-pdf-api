@@ -13,82 +13,164 @@ use Ramsey\Uuid\Uuid;
 
 class HtmlToPdf
 {
-    protected static $engines = [
+    //region Base
+    /**
+     * Compatible Chromium utilities.
+     * @var string[]
+     */
+    protected const ENGINES = [
         '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome',
         'chrome',
         'chromium-browser'
     ];
 
-    protected static function generateUuid(): string
-    {
-        return Uuid::uuid4()->toString();
-    }
+    /**
+     * Name of working engine utility.
+     * @var string
+     */
+    protected $engine;
 
-    protected static function getSourceFolder(): string
+    /**
+     * Unique identifier for this builder.
+     * @var string
+     */
+    protected $uuid;
+
+    /**
+     * HTML source
+     * @var string
+     */
+    protected $html;
+
+    /**
+     * Standard document size.
+     * @var string
+     */
+    protected $size = 'letter';
+
+    /**
+     * Orientation of standard document size.
+     * @var string
+     */
+    protected $orientation = 'portrait';
+
+    /**
+     * Custom document width.
+     * @var string
+     */
+    protected $width;
+
+    /**
+     * Custom document height.
+     * @var string
+     */
+    protected $height;
+
+    /**
+     * HtmlToPdf constructor.
+     * @param string $html
+     * @throws EngineNotFoundException
+     */
+    public function __construct(string $html)
+    {
+        $this->html = $html;
+        $this->engine = static::getEngine();
+        $this->uuid = Uuid::uuid4()->toString();
+    }
+    //endregion
+
+    //region Basic Helpers
+    /**
+     * Get path where HTML source files are stored.
+     * @return string
+     */
+    protected function getSourceFolder(): string
     {
         return storage_path('html_source');
     }
 
-    protected static function getSourceFilePath(string $uuid): string
+    /**
+     * Get path of HTML source file.
+     * @return string
+     */
+    protected function getSourceFilePath(): string
     {
-        return storage_path("html_source/$uuid.html");
+        return storage_path("html_source/{$this->uuid}.html");
     }
 
-    protected static function getOutputFolder(): string
+    /**
+     * Get path where PDF output files are stored.
+     * @return string
+     */
+    protected function getOutputFolder(): string
     {
         return storage_path('pdf_output');
     }
 
-    protected static function getOutputFilePath(string $uuid): string
+    /**
+     * Get path of PDF output file.
+     * @return string
+     */
+    protected function getOutputFilePath(): string
     {
-        return storage_path("pdf_output/$uuid.pdf");
+        return storage_path("pdf_output/{$this->uuid}.pdf");
     }
 
     /**
-     * @param string $command
+     * Determine whether the specified engine is installed on the current host.
+     * @param string $engine
      * @return bool
      */
-    protected static function engineExists(string $command): bool
+    protected static function engineExists(string $engine): bool
     {
-        $return = shell_exec(sprintf("which %s", $command));
+        $return = shell_exec(sprintf("which %s", $engine));
         return !empty($return);
     }
 
     /**
+     * Get the first engine in the list that is installed on this host.
      * @return string
      * @throws EngineNotFoundException
      */
     protected static function getEngine(): string
     {
-        foreach (static::$engines as $program) {
-            if (static::engineExists($program)) {
-                return $program;
+        foreach (static::ENGINES as $engine) {
+            if (static::engineExists($engine)) {
+                return $engine;
             }
         }
 
         throw new EngineNotFoundException();
     }
+    //endregion
 
-    protected static function getCss(string $width, string $height): string
+    //region Builder Helpers
+    /**
+     * Get the CSS style block to be injected at the beginning of the HTML source to hide browser artifacts.
+     * @return string
+     */
+    protected function getCss(): string
     {
-        return "<style>@media print{@page{margin: 0mm 0mm 0mm 0mm;size:$width $height;}}</style>";
+        if ($this->width && $this->height) {
+            $size = "{$this->width} {$this->height}";
+        } else {
+            $size = "$this->size $this->orientation";
+        }
+
+        return "<style>@media print{@page{margin:0;size:$size;}}</style>";
     }
 
     /**
-     * @param string $uuid
-     * @param string $html
-     * @param string $width
-     * @param string $height
-     * @return string
+     * Create the source HTML file.
      * @throws CouldNotCreateSourceException
      */
-    protected static function createSource(string $uuid, string $html, string $width, string $height): string
+    protected function createSource(): void
     {
-        $sourceFolder = static::getSourceFolder();
-        $sourceFilePath = static::getSourceFilePath($uuid);
+        $sourceFolder = $this->getSourceFolder();
+        $sourceFilePath = $this->getSourceFilePath();
 
-        $css = static::getCss($width, $height);
-        $html = "$css\n$html";
+        $css = $this->getCss();
+        $html = "$css\n{$this->html}";
 
         if (!is_writable($sourceFolder) ||
             is_file($sourceFilePath) ||
@@ -96,22 +178,19 @@ class HtmlToPdf
         ) {
             throw new CouldNotCreateSourceException();
         }
-
-        return $uuid;
     }
 
     /**
-     * @param string $uuid
+     * Create the PDF from the HTML source file.
      * @throws CouldNotFindSourceException
-     * @throws EngineNotFoundException
      * @throws CouldNotCreatePdfException
      * @throws PdfCreationFailedException
      */
-    protected static function createPdf(string $uuid)
+    protected  function createPdf()
     {
-        $sourceFilePath = static::getSourceFilePath($uuid);
-        $outputFolder = static::getOutputFolder();
-        $outputFilePath = static::getOutputFilePath($uuid);
+        $sourceFilePath = $this->getSourceFilePath();
+        $outputFolder = $this->getOutputFolder();
+        $outputFilePath = $this->getOutputFilePath();
 
         if (!is_file($sourceFilePath)) {
             echo $sourceFilePath;
@@ -124,10 +203,9 @@ class HtmlToPdf
             throw new CouldNotCreatePdfException();
         }
 
-        $engine = static::getEngine();
         $command = sprintf(
             '%s --headless --disable-gpu --print-to-pdf="%s" %s',
-            $engine,
+            $this->engine,
             $outputFilePath,
             $sourceFilePath
         );
@@ -139,13 +217,13 @@ class HtmlToPdf
     }
 
     /**
-     * @param string $uuid
+     * Get the contents of the created PDF file.
      * @return string
      * @throws CouldNotFindOutputException
      */
-    protected static function getPdfContents(string $uuid): string
+    protected function getPdfContents(): string
     {
-        $outputFilePath = static::getOutputFilePath($uuid);
+        $outputFilePath = static::getOutputFilePath();
 
         if (!file_exists($outputFilePath)) {
             throw new CouldNotFindOutputException();
@@ -155,12 +233,12 @@ class HtmlToPdf
     }
 
     /**
-     * @param string $uuid
+     * Remove HTML source and PDF output files.
      */
-    protected static function cleanup(string $uuid): void
+    protected function cleanup(): void
     {
-        $sourceFilePath = static::getSourceFilePath($uuid);
-        $outputFilePath = static::getOutputFilePath($uuid);
+        $sourceFilePath = static::getSourceFilePath();
+        $outputFilePath = static::getOutputFilePath();
 
         if (file_exists($sourceFilePath)) {
             unlink($sourceFilePath);
@@ -170,30 +248,78 @@ class HtmlToPdf
             unlink($outputFilePath);
         }
     }
+    //endregion
+
+    //region Builders
+    /**
+     * Set a standard document size.
+     * @param string $size
+     * @return $this
+     */
+    public function size(string $size): HtmlToPdf
+    {
+        $this->size = $size;
+
+        return $this;
+    }
 
     /**
-     * @param string $html
+     * Set the document orientation to portrait.
+     * @return $this
+     */
+    public function portrait(): HtmlToPdf
+    {
+        $this->orientation = 'portrait';
+
+        return $this;
+    }
+
+    /**
+     * Set the document orientation to landscape.
+     * @return $this
+     */
+    public function landscape(): HtmlToPdf
+    {
+        $this->orientation = 'landscape';
+
+        return $this;
+    }
+
+    /**
+     * Set a custom document dimensions.
      * @param string $width
      * @param string $height
+     * @return $this
+     */
+    public function dimensions(string $width, string $height): HtmlToPdf
+    {
+        $this->width = $width;
+        $this->height = $height;
+
+        return $this;
+    }
+
+    /**
+     * Initiate start conversion and return PDF contents.
      * @return string|false
      */
-    public static function convert(string $html, string $width = '8.5in', string $height = '11in'): bool
+    public function convert(): bool
     {
-        $uuid = static::generateUuid();
         $blob = false;
 
         try {
-            static::createSource($uuid, $html, $width, $height);
-            static::createPdf($uuid);
-            $blob = static::getPdfContents($uuid);
+            static::createSource();
+            static::createPdf();
+            $blob = static::getPdfContents();
         } catch (\Exception $exception) {
             Log::error($exception);
         } finally {
-            static::cleanup($uuid);
+            static::cleanup();
         }
 
         file_put_contents('/Users/nick/Downloads/test.pdf', $blob);
 
         return $blob;
     }
+    //endregion
 }
