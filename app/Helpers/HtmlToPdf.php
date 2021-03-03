@@ -61,7 +61,7 @@ class HtmlToPdf
     protected static function getEngine(): string
     {
         foreach (static::$engines as $program) {
-            if (self::engineExists($program)) {
+            if (static::engineExists($program)) {
                 return $program;
             }
         }
@@ -69,18 +69,26 @@ class HtmlToPdf
         throw new EngineNotFoundException();
     }
 
+    protected static function getCss(string $width, string $height): string
+    {
+        return "<style>@media print{@page{margin: 0mm 0mm 0mm 0mm;size:$width $height;}}</style>";
+    }
+
     /**
-     * @param string $html
      * @param string $uuid
+     * @param string $html
+     * @param string $width
+     * @param string $height
      * @return string
      * @throws CouldNotCreateSourceException
      */
-    protected static function createSource(string $html, string $uuid): string
+    protected static function createSource(string $uuid, string $html, string $width, string $height): string
     {
-        $sourceFolder = self::getSourceFolder();
-        $sourceFilePath = self::getSourceFilePath($uuid);
+        $sourceFolder = static::getSourceFolder();
+        $sourceFilePath = static::getSourceFilePath($uuid);
 
-        //TODO: Inject CSS
+        $css = static::getCss($width, $height);
+        $html = "$css\n$html";
 
         if (!is_writable($sourceFolder) ||
             is_file($sourceFilePath) ||
@@ -101,9 +109,9 @@ class HtmlToPdf
      */
     protected static function createPdf(string $uuid)
     {
-        $sourceFilePath = self::getSourceFilePath($uuid);
-        $outputFolder = self::getOutputFolder();
-        $outputFilePath = self::getOutputFilePath($uuid);
+        $sourceFilePath = static::getSourceFilePath($uuid);
+        $outputFolder = static::getOutputFolder();
+        $outputFilePath = static::getOutputFilePath($uuid);
 
         if (!is_file($sourceFilePath)) {
             echo $sourceFilePath;
@@ -116,7 +124,7 @@ class HtmlToPdf
             throw new CouldNotCreatePdfException();
         }
 
-        $engine = self::getEngine();
+        $engine = static::getEngine();
         $command = sprintf(
             '%s --headless --disable-gpu --print-to-pdf="%s" %s',
             $engine,
@@ -137,7 +145,7 @@ class HtmlToPdf
      */
     protected static function getPdfContents(string $uuid): string
     {
-        $outputFilePath = self::getOutputFilePath($uuid);
+        $outputFilePath = static::getOutputFilePath($uuid);
 
         if (!file_exists($outputFilePath)) {
             throw new CouldNotFindOutputException();
@@ -151,8 +159,8 @@ class HtmlToPdf
      */
     protected static function cleanup(string $uuid): void
     {
-        $sourceFilePath = self::getSourceFilePath($uuid);
-        $outputFilePath = self::getOutputFilePath($uuid);
+        $sourceFilePath = static::getSourceFilePath($uuid);
+        $outputFilePath = static::getOutputFilePath($uuid);
 
         if (file_exists($sourceFilePath)) {
             unlink($sourceFilePath);
@@ -165,22 +173,26 @@ class HtmlToPdf
 
     /**
      * @param string $html
+     * @param string $width
+     * @param string $height
      * @return string|false
      */
-    public static function convert(string $html): bool
+    public static function convert(string $html, string $width = '8.5in', string $height = '11in'): bool
     {
-        $uuid = self::generateUuid();
+        $uuid = static::generateUuid();
         $blob = false;
 
         try {
-            self::createSource($html, $uuid);
-            self::createPdf($uuid);
-            $blob = self::getPdfContents($uuid);
+            static::createSource($uuid, $html, $width, $height);
+            static::createPdf($uuid);
+            $blob = static::getPdfContents($uuid);
         } catch (\Exception $exception) {
             Log::error($exception);
         } finally {
-            self::cleanup($uuid);
+            static::cleanup($uuid);
         }
+
+        file_put_contents('/Users/nick/Downloads/test.pdf', $blob);
 
         return $blob;
     }
