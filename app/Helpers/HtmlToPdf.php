@@ -270,13 +270,33 @@ class HtmlToPdf
         Validator::validate([
             'size' => $size
         ], [
-            'size' => Rule::in(['A5', 'A4', 'A3', 'B5', 'B4', 'JIS-B5', 'JIS-B4', 'letter', 'legal', 'ledger'])
+            'size' => ['required', Rule::in(['A5', 'A4', 'A3', 'B5', 'B4', 'JIS-B5', 'JIS-B4', 'letter', 'legal', 'ledger'])]
         ], [
             'size.in' => 'Size must be an acceptable value for CSS page-size. See https://developer.mozilla.org/en-US/docs/Web/CSS/@page/size#values'
         ]);
 
         $this->useCustomSize = false;
         $this->size = $size;
+
+        return $this;
+    }
+
+    /**
+     * Set the document orientation.
+     * @param string $orientation
+     * @return $this
+     */
+    public function orientation(string $orientation): HtmlToPdf
+    {
+        Validator::validate([
+            'orientation' => $orientation
+        ], [
+            'orientation' => ['required', Rule::in('portrait', 'landscape')]
+        ], [
+            'orientation.in' => 'Orientation must be "portrait" or "landscape"'
+        ]);
+
+        $orientation == 'landscape' ?  $this->landscape() : $this->portrait();
 
         return $this;
     }
@@ -317,8 +337,8 @@ class HtmlToPdf
             'width' => $width,
             'height' => $height
         ], [
-            'width' => ["regex:$format"], //Use array to prevent errors with pipe character |
-            'height' => ["regex:$format"] //Use array to prevent errors with pipe character |
+            'width' => ['required', "regex:$format"], //Use array to prevent errors with pipe character |
+            'height' => ['required', "regex:$format"] //Use array to prevent errors with pipe character |
         ], [
             'width.regex' => 'Width must be an acceptable value for CSS absolute length. See https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Values_and_Units#dimensions',
             'height.regex' => 'Height must be an acceptable value for CSS absolute length. See https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Values_and_Units#dimensions'
@@ -335,7 +355,7 @@ class HtmlToPdf
      * Initiate start conversion and return PDF contents.
      * @return string|false
      */
-    public function convert(): bool
+    public function convert()
     {
         try {
             static::createSource();

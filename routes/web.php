@@ -13,6 +13,4 @@
 |
 */
 
-use App\Http\Controllers\ConvertController;
-
-$router->post('/convert', [ConvertController::class, 'convert']);
+$router->post('/convert', 'ConvertController@convert');
