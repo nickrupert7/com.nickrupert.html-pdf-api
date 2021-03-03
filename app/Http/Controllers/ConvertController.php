@@ -2,17 +2,12 @@
 
 namespace App\Http\Controllers;
 
-class ExampleController extends Controller
-{
-    /**
-     * Create a new controller instance.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        //
-    }
+use Illuminate\Http\Request;
 
-    //
+class ConvertController extends Controller
+{
+    public function convert(Request $request)
+    {
+
+    }
 }

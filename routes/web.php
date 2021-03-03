@@ -13,6 +13,6 @@
 |
 */
 
-$router->get('/', function () use ($router) {
-    return $router->app->version();
-});
+use App\Http\Controllers\ConvertController;
+
+$router->post('/convert', [ConvertController::class, 'convert']);
