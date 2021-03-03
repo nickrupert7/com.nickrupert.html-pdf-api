@@ -9,8 +9,6 @@ use App\Exceptions\CouldNotFindSourceException;
 use App\Exceptions\EngineNotFoundException;
 use App\Exceptions\PdfCreationFailedException;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Ramsey\Uuid\Uuid;
 
 class HtmlToPdf
@@ -267,14 +265,6 @@ class HtmlToPdf
      */
     public function size(string $size): HtmlToPdf
     {
-        Validator::validate([
-            'size' => $size
-        ], [
-            'size' => ['required', Rule::in(['A5', 'A4', 'A3', 'B5', 'B4', 'JIS-B5', 'JIS-B4', 'letter', 'legal', 'ledger'])]
-        ], [
-            'size.in' => 'Size must be an acceptable value for CSS page-size. See https://developer.mozilla.org/en-US/docs/Web/CSS/@page/size#values'
-        ]);
-
         $this->useCustomSize = false;
         $this->size = $size;
 
@@ -288,14 +278,6 @@ class HtmlToPdf
      */
     public function orientation(string $orientation): HtmlToPdf
     {
-        Validator::validate([
-            'orientation' => $orientation
-        ], [
-            'orientation' => ['required', Rule::in('portrait', 'landscape')]
-        ], [
-            'orientation.in' => 'Orientation must be "portrait" or "landscape"'
-        ]);
-
         $orientation == 'landscape' ?  $this->landscape() : $this->portrait();
 
         return $this;
@@ -331,19 +313,6 @@ class HtmlToPdf
      */
     public function dimensions(string $width, string $height): HtmlToPdf
     {
-        $format = '/^(\d+\.)?\d+((cm)|(mm)|(Q)|(in)|(pc)|(pt)|(px))$/i';
-
-        Validator::validate([
-            'width' => $width,
-            'height' => $height
-        ], [
-            'width' => ['required', "regex:$format"], //Use array to prevent errors with pipe character |
-            'height' => ['required', "regex:$format"] //Use array to prevent errors with pipe character |
-        ], [
-            'width.regex' => 'Width must be an acceptable value for CSS absolute length. See https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Values_and_Units#dimensions',
-            'height.regex' => 'Height must be an acceptable value for CSS absolute length. See https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Values_and_Units#dimensions'
-        ]);
-
         $this->useCustomSize = true;
         $this->width = $width;
         $this->height = $height;
