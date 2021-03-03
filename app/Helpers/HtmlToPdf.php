@@ -305,6 +305,7 @@ class HtmlToPdf
      */
     public function convert(): bool
     {
+        //TODO: Change to package, account for creating storage folders
         $blob = false;
 
         try {
