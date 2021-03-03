@@ -1,7 +1,7 @@
 {
-    "name": "laravel/lumen",
-    "description": "The Laravel Lumen Framework.",
-    "keywords": ["framework", "laravel", "lumen"],
+    "name": "nickrupert/html-pdf-api",
+    "description": "A lightweight HTML to PDF conversion API",
+    "keywords": ["html", "pdf", "api"],
     "license": "MIT",
     "type": "project",
     "require": {
