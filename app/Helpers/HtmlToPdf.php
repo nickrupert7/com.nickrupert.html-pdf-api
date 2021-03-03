@@ -19,9 +19,9 @@ class HtmlToPdf
      * @var string[]
      */
     protected const ENGINES = [
-        '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome',
+        'chromium-browser',
         'chrome',
-        'chromium-browser'
+        '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome'
     ];
 
     /**
