@@ -1,6 +1,19 @@
+# Development
 /vendor
-/.idea
 Homestead.json
 Homestead.yaml
 .env
+*.backup
+/tests/coverage
+
+# Caches
 .phpunit.result.cache
+.php_cs.cache
+
+# PhpStorm
+**/.idea/workspace.xml
+**/.idea/tasks.xml
+**/.idea/usage.statistics.xml
+**/.idea/shelf
+**/.idea/**/*.iml
+!/.idea/com.nickrupert.html-pdf-api.iml
