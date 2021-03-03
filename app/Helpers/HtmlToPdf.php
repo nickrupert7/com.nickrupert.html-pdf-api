@@ -9,6 +9,8 @@ use App\Exceptions\CouldNotFindSourceException;
 use App\Exceptions\EngineNotFoundException;
 use App\Exceptions\PdfCreationFailedException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Ramsey\Uuid\Uuid;
 
 class HtmlToPdf
@@ -43,6 +45,12 @@ class HtmlToPdf
     protected $html;
 
     /**
+     * Use custom document sizing.
+     * @var bool
+     */
+    protected $useCustomSize = false;
+
+    /**
      * Standard document size.
      * @var string
      */
@@ -52,7 +60,7 @@ class HtmlToPdf
      * Orientation of standard document size.
      * @var string
      */
-    protected $orientation = 'portrait';
+    protected $portrait = true;
 
     /**
      * Custom document width.
@@ -151,10 +159,11 @@ class HtmlToPdf
      */
     protected function getCss(): string
     {
-        if ($this->width && $this->height) {
+        if ($this->useCustomSize) {
             $size = "{$this->width} {$this->height}";
         } else {
-            $size = "$this->size $this->orientation";
+            $orientation = $this->portrait ? 'portrait' : 'landscape';
+            $size = "{$this->size} {$orientation}";
         }
 
         return "<style>@media print{@page{margin:0;size:$size;}}</style>";
@@ -258,6 +267,15 @@ class HtmlToPdf
      */
     public function size(string $size): HtmlToPdf
     {
+        Validator::validate([
+            'size' => $size
+        ], [
+            'size' => Rule::in(['A5', 'A4', 'A3', 'B5', 'B4', 'JIS-B5', 'JIS-B4', 'letter', 'legal', 'ledger'])
+        ], [
+            'size.in' => 'Size must be an acceptable value for CSS page-size. See https://developer.mozilla.org/en-US/docs/Web/CSS/@page/size#values'
+        ]);
+
+        $this->useCustomSize = false;
         $this->size = $size;
 
         return $this;
@@ -269,7 +287,7 @@ class HtmlToPdf
      */
     public function portrait(): HtmlToPdf
     {
-        $this->orientation = 'portrait';
+        $this->portrait = true;
 
         return $this;
     }
@@ -280,7 +298,7 @@ class HtmlToPdf
      */
     public function landscape(): HtmlToPdf
     {
-        $this->orientation = 'landscape';
+        $this->portrait = false;
 
         return $this;
     }
@@ -293,6 +311,20 @@ class HtmlToPdf
      */
     public function dimensions(string $width, string $height): HtmlToPdf
     {
+        $format = '/^(\d+\.)?\d+((cm)|(mm)|(Q)|(in)|(pc)|(pt)|(px))$/i';
+
+        Validator::validate([
+            'width' => $width,
+            'height' => $height
+        ], [
+            'width' => ["regex:$format"], //Use array to prevent errors with pipe character |
+            'height' => ["regex:$format"] //Use array to prevent errors with pipe character |
+        ], [
+            'width.regex' => 'Width must be an acceptable value for CSS absolute length. See https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Values_and_Units#dimensions',
+            'height.regex' => 'Height must be an acceptable value for CSS absolute length. See https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Values_and_Units#dimensions'
+        ]);
+
+        $this->useCustomSize = true;
         $this->width = $width;
         $this->height = $height;
 
@@ -305,15 +337,13 @@ class HtmlToPdf
      */
     public function convert(): bool
     {
-        //TODO: Change to package, account for creating storage folders
-        $blob = false;
-
         try {
             static::createSource();
             static::createPdf();
             $blob = static::getPdfContents();
         } catch (\Exception $exception) {
             Log::error($exception);
+            $blob = false;
         } finally {
             static::cleanup();
         }
